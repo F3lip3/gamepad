@@ -29,8 +29,8 @@
       "error",
       "ignorePackages",
       {
-        "ts": "never",
-        "tsx": "never"
+        "js": "never",
+        "jsx": "never"
       }
     ],
     "import/prefer-default-export": "off",
@@ -86,5 +86,12 @@
     "react/style-prop-object": "off",
     "react-hooks/exhaustive-deps": "warn",
     "react-hooks/rules-of-hooks": "error"
+  },
+  "settings": {
+    "import/resolver": {
+      "node": {
+        "extensions": [".js", ".jsx"]
+      }
+    }
   }
 }
