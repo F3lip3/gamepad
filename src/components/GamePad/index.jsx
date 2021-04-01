@@ -1,72 +1,70 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Animated, PanResponder } from 'react-native';
+import { getSpeed, getXY } from './math';
 
 import { Plate, Handler } from './styles';
 
-const GamePad = ({ size = 120 }) => {
+const GamePad = ({ size = 120, maxSpeedLevel = 3, onChange, ...props }) => {
   const [pan] = useState(new Animated.ValueXY());
 
-  const panResponder = PanResponder.create({
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: () => {
-      pan.setOffset({
-        x: pan.x._value,
-        y: pan.y._value
-      });
-    },
-    onPanResponderMove: (evt, gestureState) => {
-      const max = size / 2;
-      let { dx, dy } = gestureState;
-      const hypotenuse = Math.sqrt(Math.abs(dx) ** 2 + Math.abs(dy) ** 2);
-      if (hypotenuse > max) {
-        // let ndx = dx;
-        // let ndy = dy;
-        if (Math.abs(dx) > Math.abs(dy)) {
-          const modifier = dx > 0 ? 1 : -1;
-          const dyFix = Math.abs(dy) > max ? max : Math.abs(dy);
-          const ndx = Math.sqrt(max ** 2 - dyFix ** 2);
-          dx = (ndx === 0 ? max : ndx) * modifier;
+  const handlePanChange = useCallback(
+    ({ x, y }) => {
+      if (x !== 0 && y !== 0) {
+        const output = {};
+        if (Math.abs(x) > Math.abs(y)) {
+          output.direction = x > 0 ? 'right' : 'left';
+          output.speed = getSpeed(Math.abs(x), size / 2, maxSpeedLevel);
         } else {
-          const modifier = dy > 0 ? 1 : -1;
-          const dxFix = Math.abs(dx) > max ? max : Math.abs(dx);
-          const ndy = Math.sqrt(max ** 2 - dxFix ** 2);
-          dy = (ndy === 0 ? max : ndy) * modifier;
+          output.direction = y > 0 ? 'down' : 'up';
+          output.speed = getSpeed(Math.abs(y), size / 2, maxSpeedLevel);
         }
-        console.info(dx, dy);
-        console.info('----');
+        onChange(output);
       }
-
-      // const max = size / 2;
-      // const min = (size / 2) * -1;
-      // let { dx, dy } = gestureState;
-
-      // if (dx > 0 && dx > max) dx = max;
-      // if (dx < 0 && dx < min) dx = min;
-      // if (dy > 0 && dy > max) dy = max;
-      // if (dy < 0 && dy < min) dy = min;
-
-      Animated.event([null, { dx: pan.x, dy: pan.y }], {
-        useNativeDriver: false
-      })(evt, { dx, dy });
     },
-    onPanResponderRelease: () => {
-      pan.setValue({ x: 0, y: 0 });
-    }
-  });
+    [maxSpeedLevel, onChange, size]
+  );
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: () => true,
+        onPanResponderGrant: () => {
+          pan.setOffset({
+            x: pan.x._value,
+            y: pan.y._value
+          });
+        },
+        onPanResponderMove: (evt, gestureState) => {
+          const max = size / 2;
+          const { dx, dy } = gestureState;
+          const newPosition = getXY(dx, dy, max);
+
+          Animated.event([null, { dx: pan.x, dy: pan.y }], {
+            useNativeDriver: false
+          })(evt, newPosition);
+        },
+        onPanResponderRelease: () => {
+          pan.setValue({ x: 0, y: 0 });
+        }
+      }),
+    [pan, size]
+  );
+
+  useEffect(() => {
+    pan.addListener(handlePanChange);
+  }, [handlePanChange, pan]);
 
   return (
-    <>
-      <Plate size={size}>
-        <Animated.View
-          style={{
-            transform: [{ translateX: pan.x }, { translateY: pan.y }]
-          }}
-          {...panResponder.panHandlers}
-        >
-          <Handler size={size} {...panResponder.panHandlers} />
-        </Animated.View>
-      </Plate>
-    </>
+    <Plate size={size} {...props}>
+      <Animated.View
+        style={{
+          transform: [{ translateX: pan.x }, { translateY: pan.y }]
+        }}
+        {...panResponder.panHandlers}
+      >
+        <Handler size={size} {...panResponder.panHandlers} />
+      </Animated.View>
+    </Plate>
   );
 };
 
